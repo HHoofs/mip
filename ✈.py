@@ -1,6 +1,9 @@
+import re
+from collections import defaultdict
 from dataclasses import dataclass
 from enum import Enum
 from functools import cached_property
+from pprint import pprint
 from typing import NamedTuple, Set, Dict, Tuple, Iterable, List
 
 from gurobipy import Model, GRB, tuplelist, quicksum
@@ -68,9 +71,11 @@ class SchedulePlaneMaintenance():
         self._planes = planes
         self._workers = workers
         self.WORKING_HOURS = working_hours
-        self._build_model()
 
-    def _build_model(self):
+    def optimize(self) -> None:
+        self.model.optimize()
+
+    def build(self) -> None:
         self.model = Model('✈')
 
         task_status, worker_status, plane_status = self._set_variables()
@@ -79,13 +84,13 @@ class SchedulePlaneMaintenance():
 
     def _set_variables(self):
         task_status = self.model.addVars(self.tasks,
-                                         ub=1, vtype=GRB.BINARY, name='y')
+                                         ub=1, vtype=GRB.BINARY, name='tasks')
 
         worker_tasks = self.model.addVars(self.worker_names, self.tasks,
-                                          ub=1, vtype=GRB.BINARY, name='x')
+                                          ub=1, vtype=GRB.BINARY, name='workers')
 
         plane_status = self.model.addVars((plane.name for plane in self._planes),
-                                          ub=1, vtype=GRB.BINARY, name='z')
+                                          ub=1, vtype=GRB.BINARY, name='planes')
 
         return task_status, worker_tasks, plane_status
 
@@ -124,6 +129,12 @@ class SchedulePlaneMaintenance():
     def worker_names(self) -> List[str]:
         return [worker.name for worker in self._workers]
 
+    def statuses(self, *args):
+        for var_type in args:
+            return [var for var in self.model.getVars()
+                    if var.varName.startswith(var_type)]
+
+
 
 if __name__ == '__main__':
     planes = [
@@ -137,4 +148,7 @@ if __name__ == '__main__':
         Worker('Roy', set()),
         Worker('Brown', set())
     ]
-    SchedulePlaneMaintenance(planes, workers)
+    scheduler = SchedulePlaneMaintenance(planes, workers)
+    scheduler.build()
+    scheduler.optimize()
+    scheduler.statuses_to_dict('workers')
