@@ -1,7 +1,4 @@
-from scheduler.constants import QUALIFICATIONS
-from scheduler.model import SchedulePlaneMaintenance
-
-if __name__ == '__main__':
+def test_missing_skill():
     planes = {
         'F16': ('wings', 'propellers',),
         'JSF': ('propellers',),
