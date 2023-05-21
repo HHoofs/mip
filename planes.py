@@ -1,3 +1,5 @@
+from pprint import pprint
+
 from scheduler.constants import QUALIFICATIONS
 from scheduler.model import SchedulePlaneMaintenance
 
@@ -17,5 +19,4 @@ if __name__ == '__main__':
     scheduler = SchedulePlaneMaintenance(planes, workers)
     scheduler.build()
     scheduler.optimize()
-    planes_statuses = scheduler.statuses('planes')
-    pprint(*planes_statuses)
+    pprint(scheduler.plane_status)

@@ -1,8 +1,32 @@
+from scheduler.constants import QUALIFICATIONS, TASKS
+from scheduler.model import SchedulePlaneMaintenance
+
+
 def test_missing_skill():
     planes = {
-        'F16': ('wings', 'propellers',),
-        'JSF': ('propellers',),
-        'MiG': ('tail', 'cockpit',)
+        'F16': ('engine', 'cockpit', 'wings', ),
+        'JSF': ('engine', 'cockpit', 'wings', ),
+        'MiG': ('engine', 'cockpit', 'wings', ),
+    }
+
+    workers = {
+        'Arthur': {q for q in QUALIFICATIONS if q.name != 'FAA_11'},
+        'Roy': {q for q in QUALIFICATIONS if q.name != 'FAA_11'},
+        'Brown': {q for q in QUALIFICATIONS if q.name != 'FAA_11'},
+    }
+
+    scheduler = SchedulePlaneMaintenance(planes, workers, working_hours=12)
+    scheduler.build()
+    scheduler.optimize()
+    assert scheduler.plane_status.sum().getValue() == 0
+
+
+def test_complex_plane():
+    planes = {
+        'F16': ('engine', 'cockpit', 'wings', ),
+        'JSF': ('engine', 'cockpit', 'wings', ),
+        'MiG': ('engine', 'cockpit', 'wings', ),
+        'Fokker': TASKS.keys(),
     }
 
     workers = {
@@ -11,8 +35,8 @@ def test_missing_skill():
         'Brown': {q for q in QUALIFICATIONS},
     }
 
-    scheduler = SchedulePlaneMaintenance(planes, workers)
+    scheduler = SchedulePlaneMaintenance(planes, workers, working_hours=12)
     scheduler.build()
     scheduler.optimize()
-    planes_statuses = scheduler.statuses('planes')
-    pprint(*planes_statuses)
+    assert scheduler.plane_status.sum().getValue() == 3
+    assert scheduler.plane_status['Fokker'].X == 0

@@ -1,2 +1,8 @@
 .idea
 venv
+
+*.lock
+
+scheduler/__pycache__/
+
+tests/__pycache__/
