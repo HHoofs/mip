@@ -1,6 +1,9 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import NamedTuple, Set, Dict, Tuple, Iterable
+from functools import cached_property
+from typing import NamedTuple, Set, Dict, Tuple, Iterable, List
+
+from gurobipy import Model, GRB, tuplelist, quicksum
 
 
 class QUALIFICATIONS(Enum):
@@ -22,35 +25,116 @@ class Task(NamedTuple):
 
 
 TASKS: Dict[str, Task] = {
-    'fuselage': Task({QUALIFICATIONS[f'FAA_{q}'] for q in ['01', '02', '03']}, 3),
-    'cockpit': Task({QUALIFICATIONS[f'FAA_{q}'] for q in ['01', '11', '21']}, 2),
-    'wings': Task({QUALIFICATIONS[f'FAA_{q}'] for q in ['11', '12']}, 2),
-    'tail': Task({QUALIFICATIONS[f'FAA_{q}'] for q in ['21', '22', '23', '24']}, 4),
-    'engine': Task({QUALIFICATIONS[f'FAA_{q}'] for q in ['11', '21', '23']}, 5),
-    'propeller': Task({QUALIFICATIONS[f'FAA_{q}'] for q in ['03', '11', '12']}, 1),
-    'landing_gear': Task({QUALIFICATIONS[f'FAA_{q}'] for q in ['11', '12', '21', '25']}, 2),
+    'fuselage': Task({QUALIFICATIONS[f'FAA_{q}']
+                      for q in ['01', '02', '03']}, 3),
+    'cockpit': Task({QUALIFICATIONS[f'FAA_{q}']
+                     for q in ['01', '11', '21']}, 2),
+    'wings': Task({QUALIFICATIONS[f'FAA_{q}']
+                   for q in ['11', '12']}, 2),
+    'tail': Task({QUALIFICATIONS[f'FAA_{q}']
+                  for q in ['21', '22', '23', '24']}, 4),
+    'engine': Task({QUALIFICATIONS[f'FAA_{q}']
+                    for q in ['11', '21', '23']}, 5),
+    'propellers': Task({QUALIFICATIONS[f'FAA_{q}']
+                        for q in ['03', '11', '12']}, 1),
+    'landing_gear': Task({QUALIFICATIONS[f'FAA_{q}']
+                          for q in ['11', '12', '21', '25']}, 2),
 }
 
 
 @dataclass
 class Plane:
-    tasks: Tuple[str]
+    name: str
+    tasks: Iterable[str]
 
     def __post_init__(self):
-        if invalid_tasks := [task for task in self.tasks if task not in TASKS.keys()]:
+        if invalid_tasks := [task for task in self.tasks
+                             if task not in TASKS.keys()]:
             raise ValueError(f'Invalid tasks found: {invalid_tasks}')
 
 
 @dataclass
 class Worker:
+    name: str
     qualifications: Set[QUALIFICATIONS]
 
 
 class SchedulePlaneMaintenance():
-    def __init__(self, planes: Iterable[Plane], workers: Iterable[Worker],
+    def __init__(self,
+                 planes: Iterable[Plane],
+                 workers: Iterable[Worker],
                  working_hours: int = 8):
-        self.planes = planes
-        self.workers = workers
-        self.working_hours = working_hours
+        self.model = None
+        self._planes = planes
+        self._workers = workers
+        self.WORKING_HOURS = working_hours
+        self._build_model()
 
-    def _set_up_variables(self):
+    def _build_model(self):
+        self.model = Model('✈')
+
+        task_status, worker_status, plane_status = self._set_variables()
+        self.model.setObjective(plane_status.sum(), GRB.MAXIMIZE)
+        self._set_contraints(task_status, worker_status, plane_status)
+
+    def _set_variables(self):
+        task_status = self.model.addVars(self.tasks,
+                                         ub=1, vtype=GRB.BINARY, name='y')
+
+        worker_tasks = self.model.addVars(self.worker_names, self.tasks,
+                                          ub=1, vtype=GRB.BINARY, name='x')
+
+        plane_status = self.model.addVars((plane.name for plane in self._planes),
+                                          ub=1, vtype=GRB.BINARY, name='z')
+
+        return task_status, worker_tasks, plane_status
+
+    def _set_contraints(self, task_status, worker_status, plane_status):
+
+        self.model.addConstrs((task_status[task] >= plane_status[plane]
+                               for plane in plane_status
+                               for task in self.tasks.select(plane, '*')),
+                              'plane_tasks_completed')
+
+        self.model.addConstrs((task_status[task] <= worker_status.sum("*", *task)
+                               for task in task_status),
+                              'task_picked_up')
+
+        self.model.addConstrs((quicksum(worker_status[(worker, *task)]
+                                        * TASKS[task[1]].time
+                                        for task in self.tasks) <= self.WORKING_HOURS
+                               for worker in self.worker_names),
+                              'max_working_hours')
+
+        # self.model.addConstrs((x[_x] <= 1
+        #                        if tasks_q[_x[2]].issubset(workers_q[_x[0]])
+        #                        else x[_x] <= 0
+        #                        for _x in ),
+        #                       'qualified_work_only')
+
+    @cached_property
+    def tasks(self):
+        return tuplelist([
+            (plane.name, task)
+            for plane in self._planes
+            for task in plane.tasks
+        ])
+
+    @cached_property
+    def worker_names(self) -> List[str]:
+        return [worker.name for worker in self._workers]
+
+
+if __name__ == '__main__':
+    planes = [
+        Plane('F16', ('wings', 'propellers')),
+        Plane('JSF', ('propellers',)),
+        Plane('MiG', ('tail', 'cockpit'))
+    ]
+
+    workers = [
+        Worker('Arthur', set()),
+        Worker('Roy', set()),
+        Worker('Brown', set())
+    ]
+    SchedulePlaneMaintenance(planes, workers)
