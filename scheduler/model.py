@@ -1,9 +1,9 @@
 import re
 from collections import defaultdict
 from functools import cached_property
-from typing import Set, Dict, Iterable, List
+from typing import Set, Dict, Iterable, List, Tuple
 
-from gurobipy import Model, GRB, tuplelist, quicksum  # type: ignore
+from gurobipy import Model, GRB, tuplelist, quicksum, tupledict  # type: ignore
 
 from scheduler.constants import TASKS, QUALIFICATIONS
 
@@ -26,17 +26,15 @@ class SchedulePlaneMaintenance:
         self.WORKING_HOURS = working_hours
         self._check_plane_tasks(self.tasks)
         self.task_status, self.worker_status, self.plane_status = \
-            None, None, None
+            self._create_variables()
 
     def build(self) -> None:
         """
         Build mip model, using following steps:
-            1. Create variables
-            2. Set objective of model (as many planes completed as possible)
-            3. Set constraints of model
+            1. Set objective of model (as many planes completed as possible)
+            2. Set constraints of model
         """
-        self._set_variables()
-        self.model.setObjective(self.plane_status.sum(), GRB.MAXIMIZE)  # type: ignore
+        self.model.setObjective(self.plane_status.sum(), GRB.MAXIMIZE)
         self._set_constraints()
 
     def optimize(self) -> None:
@@ -67,12 +65,12 @@ class SchedulePlaneMaintenance:
         """
         self.check_if_model_is_optimal()
 
-        schedule = defaultdict(lambda: defaultdict(list))
+        schedule = defaultdict(lambda: defaultdict(list))  # type: ignore
 
         assigned_tasks = \
-                [self.RE_BRACKETS.search(task.varName).group(1).split(',')
-                 for task in self.worker_status.select()
-                 if task.X]
+            [self.RE_BRACKETS.search(task.varName).group(1).split(',')
+             for task in self.worker_status.select()
+             if task.X]
         for task in assigned_tasks:
             schedule[task[0]][task[1]].append(task[2])
 
@@ -93,24 +91,26 @@ class SchedulePlaneMaintenance:
                 in self.plane_status.select()
                 if plane.X}
 
-    def _set_variables(self) -> None:
+    def _create_variables(self) -> Tuple[tupledict, tupledict, tupledict]:
         """
-        Set all mathematical variables of the mip model
+        Create all variables of the mip model
         """
         # y
-        self.task_status = \
+        task_status = \
             self.model.addVars(self.tasks,
                                ub=1, vtype=GRB.BINARY, name='tasks')
 
         # x
-        self.worker_status = \
+        worker_status = \
             self.model.addVars(self._workers.keys(), self.tasks,
                                ub=1, vtype=GRB.BINARY, name='workers')
 
         # z
-        self.plane_status = \
+        plane_status = \
             self.model.addVars(self._planes.keys(),
                                ub=1, vtype=GRB.BINARY, name='planes')
+
+        return task_status, worker_status, plane_status
 
     def _set_constraints(self) -> None:
         """
