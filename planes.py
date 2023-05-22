@@ -18,5 +18,8 @@ if __name__ == '__main__':
 
     scheduler = SchedulePlaneMaintenance(planes, workers)
     scheduler.build()
+    pprint(scheduler.worker_schedule())
     scheduler.optimize()
     pprint(scheduler.plane_status)
+    pprint(scheduler.worker_schedule())
+    pprint(scheduler.completed_planes())
