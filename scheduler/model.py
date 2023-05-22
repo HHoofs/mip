@@ -10,9 +10,41 @@ from scheduler.constants import TASKS, QUALIFICATIONS
 
 class SchedulePlaneMaintenance:
     """
-    :param planes:
-    :param workers:
-    :param working_hours:
+    Class that schedules the maintenance of planes
+    given a set of (required) tasks for each plane.
+    These tasks are picked up by a set of workers
+    given their qualifications and time required
+    for each task.
+
+    The scheduler has two stages.The model is build
+    after which it can be optimized to retrieve
+    the optimal solution.
+
+    The schedule is optimized to maxime the number
+    of planes without any remaining task.
+
+    :param planes: Planes with their associated tasks to be performed
+    :param workers: Workers with their associated qualifications
+    :param working_hours: Maximum time that workers can spend on their tasks
+
+    Example
+    -------
+    In this example a single plane with a single
+    task is maintained by one of two workers.
+    These workers have all qualifications
+    and could thefore perform all tasks.
+
+    >>> scheduler = SchedulePlaneMaintenance(
+    ...                 planes={'F16': ['wings']},
+    ...                 workers={'Pat': set(QUALIFICATIONS),
+    ...                          'Mat': set(QUALIFICATIONS)})
+    >>> scheduler.build()
+    >>> scheduler.optimize()
+    >>> scheduler.completed_planes()
+    {'F16'}
+    >>> scheduler.worker_schedule()
+    {'Mat': {'F16': ['wings']}}
+
     """
     RE_BRACKETS = re.compile(r'\[(.*?)\]')
 
@@ -67,13 +99,16 @@ class SchedulePlaneMaintenance:
 
         schedule = defaultdict(lambda: defaultdict(list))  # type: ignore
 
+        # Retrieve assigned task (val == 1)
+        # and split into worker, plane, task
         assigned_tasks = \
-            [self.RE_BRACKETS.search(task.varName).group(1).split(',')
+            [re_task.group(1).split(',')
              for task in self.worker_status.select()
-             if task.X]
+             if task.X and (re_task := self.RE_BRACKETS.search(task.varName))]
         for task in assigned_tasks:
             schedule[task[0]][task[1]].append(task[2])
 
+        # convert to simple dict for (pretty) printing
         return {worker: dict(tasks)
                 for worker, tasks
                 in schedule.items()}
@@ -86,10 +121,10 @@ class SchedulePlaneMaintenance:
         :return: Planes completed after scheduled work is performed
         """
         self.check_if_model_is_optimal()
-        return {self.RE_BRACKETS.search(plane.varName).group(1)
+        return {re_plane.group(1)
                 for plane
                 in self.plane_status.select()
-                if plane.X}
+                if plane.X and (re_plane := self.RE_BRACKETS.search(plane.varName))}
 
     def _create_variables(self) -> Tuple[tupledict, tupledict, tupledict]:
         """
@@ -114,7 +149,7 @@ class SchedulePlaneMaintenance:
 
     def _set_constraints(self) -> None:
         """
-        Apply all mathematical constraints to mip model
+        Apply the mathematical constraints to mip model
         """
         self.model.addConstrs(
             (self.task_status[task] >= self.plane_status[plane]
