@@ -3,6 +3,10 @@ from typing import NamedTuple, Set, Dict
 
 
 class QUALIFICATIONS(Enum):
+    """
+    All valid qualifications for
+    a worker or a task
+    """
     FAA_01 = 1
     FAA_02 = 2
     FAA_03 = 3
@@ -16,10 +20,15 @@ class QUALIFICATIONS(Enum):
 
 
 class Task(NamedTuple):
+    """
+    A task should include a required set of qualifications
+    and a time duration to complete the task
+    """
     qualifications: Set[QUALIFICATIONS]
     time: int
 
 
+# Mapping of each task and its properties
 TASKS: Dict[str, Task] = {
     'fuselage': Task({QUALIFICATIONS[f'FAA_{q}']
                       for q in ['01', '02', '03']}, 3),
