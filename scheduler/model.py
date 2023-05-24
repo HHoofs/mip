@@ -31,19 +31,22 @@ class SchedulePlaneMaintenance:
     -------
     In this example a single plane with a single
     task is maintained by one of two workers.
-    These workers have all qualifications
-    and could thefore perform all tasks.
+    One worker has all qualifications and
+    can therefore perform each possible task
+    whilst the other is unqualified for all tasks.
+    The former will therefore perform the single
+    vacant task for the plane to be maintained.
 
     >>> scheduler = SchedulePlaneMaintenance(
     ...                 planes={'F16': ['wings']},
     ...                 workers={'Pat': set(QUALIFICATIONS),
-    ...                          'Mat': set(QUALIFICATIONS)})
+    ...                          'Mat': {}})
     >>> scheduler.build()
     >>> scheduler.optimize()
     >>> scheduler.completed_planes()
     {'F16'}
     >>> scheduler.worker_schedule()
-    {'Mat': {'F16': ['wings']}}
+    {'Pat': {'F16': ['wings']}}
 
     """
     RE_BRACKETS = re.compile(r'\[(.*?)\]')

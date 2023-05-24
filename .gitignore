@@ -6,3 +6,5 @@ venv
 scheduler/__pycache__/
 
 tests/__pycache__/
+
+__pycache__/
