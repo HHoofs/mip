@@ -55,7 +55,7 @@ class SchedulePlaneMaintenance:
                  planes: Dict[str, Iterable[str]],
                  workers: Dict[str, Set[QUALIFICATIONS]],
                  working_hours: int = 8):
-        self.model: Model = Model('✈')
+        self.model: Model = Model('🛦')
         self._planes = planes
         self._workers = workers
         self.WORKING_HOURS = working_hours
