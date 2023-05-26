@@ -10,13 +10,13 @@ class SchedulePlaneMaintenance:
     their qualifications and time required for each task.
 
     To retrieve the most optimal schedule the model can be optimized.
-    The schedule is optimized to maxime the number of planes without any
+    The schedule is optimized to maximize the number of planes without any
     remaining task. The output of this model are the deployable planes
     and work schedule following this optimized schedule.
 
     :param planes: Planes with their associated tasks to be performed
     :param workers: Workers with their associated qualifications
-    :param tasks: Task spefications, including the required
+    :param tasks: Task speciation’s, including the required
         qualifications and time for each task to be completed
 
     Note
@@ -31,7 +31,7 @@ class SchedulePlaneMaintenance:
     -------
     In this example a single plane with a single task is maintained by one of
     two workers. One worker has the required qualifications and can therefore
-    perform the task at hand  whilst the other is unqualified for this task.
+    perform the task at hand whilst the other is unqualified for this task.
     The former will therefore perform the single vacant task for the plane to
     be maintained.
 
