@@ -41,7 +41,7 @@ class SchedulePlaneMaintenance:
     ...                          'Mat': {'b'}},
     ...                 tasks={'wings': ({'a'}, 1)})
     >>> scheduler.optimize()
-    ({'Pat': {'wings'}, 'Mat': None}, {'F16'})
+    ({'Pat': {'wings'}, 'Mat': set()}, {'F16'})
 
     """
     # Fixed number of working hours
@@ -59,10 +59,10 @@ class SchedulePlaneMaintenance:
 
     def _build_model(self) -> None:
         """
-        Build mip model, using following steps:
+        Build mip model, with the following steps:
             1. Create variables
-            2. Set objective (as many deployable planes as possible)
-            3. Set constraints
+            2. Set constraints
+            3. Set objective (as many deployable planes as possible)
         """
         # y
         task_status = \
@@ -114,7 +114,7 @@ class SchedulePlaneMaintenance:
 
     def optimize(self) -> Tuple[Dict[str, Set[str]], Set[str]]:
         """
-        Optimize model to retrieve optimal schedule for each worker
+        Optimize model and retrieve optimal schedule for each worker
 
         :return: Tasks for each worker to perform (empty set if no tasks are
             assigned to this worker) and names of the deployable planes if
