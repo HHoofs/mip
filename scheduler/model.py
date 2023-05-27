@@ -48,7 +48,7 @@ class SchedulePlaneMaintenance:
     WORKING_HOURS = 8
 
     def __init__(self,
-                 planes: Mapping[str, Iterable[str]],  # {'F16': {'A', 'B', ...
+                 planes: Mapping[str, Iterable[str]],
                  workers: Mapping[str, Set[str]],
                  tasks: Mapping[str, Tuple[Set[str], int]]):
         self.model: Model = Model('🛦')

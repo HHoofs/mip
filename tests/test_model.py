@@ -130,7 +130,7 @@ def test_large_test_set():
 
     workers = {
         ''.join(_random.choices(ascii_lowercase, k=5)).title():
-            {t for t in ascii_lowercase if _random.random() > .1}
+            {t for t in ascii_lowercase if _random.random() > .2}
         for _ in range(10)
     }
 
