@@ -1,7 +1,7 @@
 from pprint import pprint
 from string import ascii_lowercase
 
-from scheduler.model import SchedulePlaneMaintenance
+from tails.model import SchedulePlaneMaintenance
 
 planes = {
     'F16': ('F16-wings', 'F16-propellers',),

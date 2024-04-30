@@ -2,6 +2,7 @@ from typing import Set, Dict, Iterable, Tuple, Mapping
 
 from gurobipy import Model, GRB, quicksum  # type: ignore
 
+from .gurobi_typing import IndexedVariable, Var
 
 class SchedulePlaneMaintenance:
     """
@@ -70,9 +71,14 @@ class SchedulePlaneMaintenance:
                                ub=1, vtype=GRB.BINARY, name='tasks')
 
         # x
-        worker_status = \
+        worker_status: IndexedVariable = \
             self.model.addVars(self._workers.keys(), self._tasks.keys(),
                                ub=1, vtype=GRB.BINARY, name='workers')
+        
+        reveal_type(worker_status)
+        a = sum(ws for ws in worker_status.values())
+        print(a)
+        reveal_type(a)
 
         # z
         plane_status = \
@@ -91,7 +97,7 @@ class SchedulePlaneMaintenance:
             (task_status[task] <= worker_status.sum("*", task)
              for task in task_status),
             name='task_picked_up')
-
+        
         # Third constraint
         self.model.addConstrs(
             (quicksum(worker_status[(worker, task)]

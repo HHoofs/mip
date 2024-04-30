@@ -3,7 +3,7 @@ from itertools import chain
 from pprint import pprint
 from string import ascii_uppercase, ascii_lowercase
 
-from scheduler.model import SchedulePlaneMaintenance
+from tails.model import SchedulePlaneMaintenance
 
 
 def test_missing_skill():

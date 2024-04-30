@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "planes"
+name = "tails"
 version = "0.1.0"
 description = "Schedule plane maintance"
 authors = ["Huub Hoofs <huubhoofs@gmail.com>"]
