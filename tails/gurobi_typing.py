@@ -1,20 +1,23 @@
 from __future__ import annotations
 
-from typing import Iterable, Literal, Protocol, Union, overload
+from typing import Any, Iterable, Literal, Protocol, Union, overload
 
 
-Expresionable = Union[int, 'Var', 'LinearExpresion', 'QuadraticExpresion']
-Expresion = Union['LinearExpresion', 'QuadraticExpresion']
+Expresionable = Union[float, "Var", "LinearExpresion", "QuadraticExpresion"]
+Expresion = Union["LinearExpresion", "QuadraticExpresion"]
+Env = Any
 
 
-class IndexedVariable(Protocol):
-    def __iter__(self) -> Iterable[Var]:
-        ...
+class Model(Protocol):
+    def __init__(self, name: str = "", env=Env) -> None: ...
 
-    def values(self) -> Iterable[Var]:
-        ...
-
-    def sum(self, *args) -> Var: ...
+    @overload
+    def addConstr(self, constraint: TempLinearConstr, name=...) -> LinearConstraint: ...
+    @overload
+    def addConstr(
+        self, constraint: TempQuadraticConstr, name=...
+    ) -> QuadraticConstraint: ...
+    def addConstr(self, constraint: TempConstr, name: str = "") -> Constraint: ...
 
 
 class Var(Protocol):
@@ -37,11 +40,12 @@ class Var(Protocol):
     won't see the effect of a change until after the next call to Model.update()
     or Model.optimize().
     """
+
     obj: float
     lb: float
     ub: float
     varname: str
-    vtype: Literal['B', 'C', 'I', 'N', 'S']
+    vtype: Literal["B", "C", "I", "N", "S"]
     x: float
     rc: float
     xn: float
@@ -76,27 +80,27 @@ class Var(Protocol):
 
     def __div__(self, x: int, /) -> LinearExpresion: ...
 
-    def __pow__(self, x: Literal[2], /) -> LinearExpresion: ... 
+    def __pow__(self, x: Literal[2], /) -> LinearExpresion: ...
 
     # see mypy [issue](https://github.com/python/mypy/issues/2783)
     # for reason over ignore
-    @overload   # type: ignore[override]  
-    def __eq__(self, x: Union[Var, LinearExpresion], /) -> LinearConstraint: ... 
     @overload  # type: ignore[override]
-    def __eq__(self, x: QuadraticExpresion, /) -> QuadraticExpresion: ... 
-    def __eq__(self, x: Union[Var, Expresion], /) -> Constraint: ...  # type: ignore[override]
+    def __eq__(self, x: Union[float, Var, LinearExpresion], /) -> LinearConstraint: ...
+    @overload  # type: ignore[override]
+    def __eq__(self, x: QuadraticExpresion, /) -> QuadraticExpresion: ...
+    def __eq__(self, x: Expresionable, /) -> Constraint: ...  # type: ignore[override]
 
-    @overload   # type: ignore[override]  
-    def __le__(self, x: Union[Var, LinearExpresion], /) -> LinearConstraint: ... 
+    @overload  # type: ignore[override]
+    def __le__(self, x: Union[float, Var, LinearExpresion], /) -> LinearConstraint: ...
     @overload  # type: ignore[override]
     def __le__(self, x: QuadraticExpresion, /) -> QuadraticExpresion: ...  # type: ignore[misc]
-    def __le__(self, x: Union[Var, Expresion], /) -> Constraint: ...  # type: ignore[override, misc]
+    def __le__(self, x: Expresionable, /) -> Constraint: ...  # type: ignore[override, misc]
 
-    @overload   # type: ignore[override]  
-    def __ge__(self, x: Union[Var, LinearExpresion], /) -> LinearConstraint: ... 
+    @overload  # type: ignore[override]
+    def __ge__(self, x: Union[float, Var, LinearExpresion], /) -> LinearConstraint: ...
     @overload  # type: ignore[override]
     def __ge__(self, x: QuadraticExpresion, /) -> QuadraticExpresion: ...  # type: ignore[misc]
-    def __ge__(self, x: Union[Var, Expresion], /) -> Constraint: ...  # type: ignore[override, misc]
+    def __ge__(self, x: Expresionable, /) -> Constraint: ...  # type: ignore[override, misc]
 
 
 class LinearExpresion(Protocol):
@@ -130,7 +134,7 @@ class LinearExpresion(Protocol):
         ...
 
     @overload
-    def getCoeff(self, i:  slice) -> list[float]: ...
+    def getCoeff(self, i: slice) -> list[float]: ...
     @overload
     def getCoeff(self, i: int) -> float: ...
     def getCoeff(self, i: int | slice) -> float | list[float]:
@@ -165,11 +169,11 @@ class LinearExpresion(Protocol):
         Args:
             i: Index of term whose coefficient is requested
         """
-    
+
     def add(self, arg1: LinearExpresion, mult: float = 1.0) -> None:
         """
         Add a linear multiple of one expression into another.
-    
+
         Args:
             arg1: The expression to add
             mult: The linear multiplier
@@ -209,7 +213,7 @@ class LinearExpresion(Protocol):
 
     def __rsub__(self, x: Union[Var, float], /) -> LinearExpresion: ...
 
-    def __isub__(self, x:  Union[LinearExpresion, Var, float], /) -> LinearExpresion: ...
+    def __isub__(self, x: Union[LinearExpresion, Var, float], /) -> LinearExpresion: ...
 
     def __neg__(self) -> LinearExpresion: ...
 
@@ -235,23 +239,23 @@ class LinearExpresion(Protocol):
 
     def __pow__(self, x: Literal[2], /) -> QuadraticExpresion: ...
 
-    @overload   # type: ignore[override]  
-    def __eq__(self, x: Union[Var, LinearExpresion], /) -> LinearConstraint: ... 
     @overload  # type: ignore[override]
-    def __eq__(self, x: QuadraticExpresion, /) -> QuadraticExpresion: ... 
-    def __eq__(self, x: Union[Var, Expresion], /) -> Constraint: ...  # type: ignore[override]
+    def __eq__(self, x: Union[float, Var, LinearExpresion], /) -> TempLinearConstr: ...
+    @overload  # type: ignore[override]
+    def __eq__(self, x: QuadraticExpresion, /) -> TempQuadraticConstr: ...
+    def __eq__(self, x: Expresionable, /) -> TempConstr: ...  # type: ignore[override]
 
-    @overload   # type: ignore[override]  
-    def __le__(self, x: Union[Var, LinearExpresion], /) -> LinearConstraint: ... 
     @overload  # type: ignore[override]
-    def __le__(self, x: QuadraticExpresion, /) -> QuadraticExpresion: ...  # type: ignore[misc]
-    def __le__(self, x: Union[Var, Expresion], /) -> Constraint: ...  # type: ignore[override, misc]
+    def __le__(self, x: Union[float, Var, LinearExpresion], /) -> TempLinearConstr: ...
+    @overload  # type: ignore[override]
+    def __le__(self, x: QuadraticExpresion, /) -> TempQuadraticConstr: ...  # type: ignore[misc]
+    def __le__(self, x: Expresionable, /) -> TempConstr: ...  # type: ignore[override, misc]
 
-    @overload   # type: ignore[override]  
-    def __ge__(self, x: Union[Var, LinearExpresion], /) -> LinearConstraint: ... 
     @overload  # type: ignore[override]
-    def __ge__(self, x: QuadraticExpresion, /) -> QuadraticExpresion: ...  # type: ignore[misc]
-    def __ge__(self, x: Union[Var, Expresion], /) -> Constraint: ...  # type: ignore[override, misc]
+    def __ge__(self, x: Union[float, Var, LinearExpresion], /) -> TempLinearConstr: ...
+    @overload  # type: ignore[override]
+    def __ge__(self, x: QuadraticExpresion, /) -> TempQuadraticConstr: ...  # type: ignore[misc]
+    def __ge__(self, x: Expresionable, /) -> TempConstr: ...  # type: ignore[override, misc]
 
 
 class QuadraticExpresion(Protocol):
@@ -312,11 +316,11 @@ class QuadraticExpresion(Protocol):
         Args:
             i: Index of term whose coefficient is requested
         """
-    
+
     def add(self, arg1: LinearExpresion, mult: float = 1.0) -> None:
         """
         Add a linear multiple of one expression into another.
-    
+
         Args:
             arg1: The expression to add
             mult: The linear multiplier
@@ -336,7 +340,9 @@ class QuadraticExpresion(Protocol):
     def addTerms(self, newcoefs: Iterable[float], newvars: Iterable[Var]) -> None: ...
     @overload
     def addTerms(self, newcoefs: float, newvars: Var) -> None: ...
-    def addTerms(self, newcoefs: Iterable[float] | float, newvars: Iterable[Var] | Var) -> None:
+    def addTerms(
+        self, newcoefs: Iterable[float] | float, newvars: Iterable[Var] | Var
+    ) -> None:
         """
         Add a list of terms into a linear expression.
 
@@ -350,7 +356,7 @@ class QuadraticExpresion(Protocol):
     def getVar1(self, i: slice) -> list[Var]: ...
     @overload
     def getVar1(self, i: int) -> Var: ...
-    def getVar1(self, i: slice | int) -> Var | list[Var]: 
+    def getVar1(self, i: slice | int) -> Var | list[Var]:
         """
         Return the first variable for the quadratic term at index 'i'.
 
@@ -364,7 +370,7 @@ class QuadraticExpresion(Protocol):
     def getVar2(self, i: slice) -> list[Var]: ...
     @overload
     def getVar2(self, i: int) -> Var: ...
-    def getVar2(self, i: int | slice) -> Var | list[Var]: 
+    def getVar2(self, i: int | slice) -> Var | list[Var]:
         """
         Return the second variable for the quadratic term at index 'i'.
 
@@ -396,15 +402,34 @@ class QuadraticExpresion(Protocol):
 
     def __div__(self, x: float, /) -> QuadraticExpresion: ...
 
-    def __eq__(self, x: Union[Var, Expresion], /) -> QuadraticConstraint: ...  # type: ignore[override]
- 
-    def __le__(self, x: Union[Var, Expresion], /) -> QuadraticConstraint: ...  # type: ignore[override, misc]
+    def __eq__(self, x: Expresionable, /) -> TempQuadraticConstr: ...  # type: ignore[override]
 
-    def __ge__(self, x: Union[Var, Expresion], /) -> QuadraticConstraint: ...  # type: ignore[override, misc]
+    def __le__(self, x: Expresionable, /) -> TempQuadraticConstr: ...  # type: ignore[override, misc]
+
+    def __ge__(self, x: Expresionable, /) -> TempQuadraticConstr: ...  # type: ignore[override, misc]
 
 
-class Constraint(Protocol):
-    ...
+class TempConstr(Protocol):
+    _lhs: Expresionable
+    _rhs: Expresionable
+    _sense: Literal["<", ">", "="]
+
+
+class TempRQuadraticConstr(TempConstr, Protocol):
+    _rhs: QuadraticExpresion
+
+
+class TempLQuadraticConstr(TempConstr, Protocol):
+    _lhs: QuadraticExpresion
+
+
+TempQuadraticConstr = TempLQuadraticConstr | TempLQuadraticConstr
+
+
+class TempLinearConstr(TempConstr, Protocol): ...
+
+
+class Constraint(Protocol): ...
 
 
 class LinearConstraint(Constraint, Protocol):
@@ -424,12 +449,12 @@ class LinearConstraint(Constraint, Protocol):
     won't see the effect of a change until after the next call to Model.update()
     or Model.optimize().
     """
-    sense: Literal['<', '>', '=']
+
+    sense: Literal["<", ">", "="]
     rhs: float
     constrname: str
     pi: float
     slack: float
-    
 
 
 class QuadraticConstraint(Constraint, Protocol):
@@ -448,12 +473,12 @@ class QuadraticConstraint(Constraint, Protocol):
     won't see the effect of a change until after the next call to
     Model.update() or Model.optimize().
     """
-    qcsense: Literal['<', '>', '=']
+
+    qcsense: Literal["<", ">", "="]
     qcrhs: float
     qcname: str
     qcpi: float
     qcslack: float
-    
 
 
 @overload  # type: ignore[no-overload-impl]
@@ -462,11 +487,11 @@ def sum(iterable: Iterable[Union[LinearExpresion, Var, float]]) -> LinearExpresi
 def sum(iterable: Iterable[Expresionable]) -> Expresion: ...
 
 
-print(sum([1,2,3]))
+print(sum([1, 2, 3]))
 
 
-a: Var # = cast(Literal[3], Var)
-b: Var # = cast(Literal[3], Var)
+a: Var  # = cast(Literal[3], Var)
+b: Var  # = cast(Literal[3], Var)
 c = (a, b, a * b)
 exp = a + 2
 
@@ -479,7 +504,8 @@ reveal_type(d)
 
 import gurobipy as gp
 from gurobipy import GRB
-m = gp.Model("mip1") 
+
+m = gp.Model("mip1")
 x = m.addVar(vtype=GRB.BINARY, name="x")
 y = m.addVar(vtype=GRB.BINARY, name="y")
 z = m.addVar(vtype=GRB.BINARY, name="z")
