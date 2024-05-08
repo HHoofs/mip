@@ -1,15 +1,35 @@
 from __future__ import annotations
 
-from typing import Any, Iterable, Literal, Protocol, Union, overload
+from datetime import datetime, timedelta
+from typing import (
+    Any,
+    Dict,
+    Iterable,
+    Iterator,
+    Literal,
+    Mapping,
+    Protocol,
+    Union,
+    overload,
+)
 
 
 Expresionable = Union[float, "Var", "LinearExpresion", "QuadraticExpresion"]
 Expresion = Union["LinearExpresion", "QuadraticExpresion"]
 Env = Any
+Scalar = Union[float, str, bool, bytes, complex, datetime, timedelta]
+
+
+class TupleDict(Protocol):
+    def __getitem__(self, idx: Scalar | slice) -> Var: ...
+
+    def __iter__(self) -> Iterator[Scalar]: ...
 
 
 class Model(Protocol):
     def __init__(self, name: str = "", env=Env) -> None: ...
+
+    def addVars(self, *args, **kwargs) -> TupleDict: ...
 
     @overload
     def addConstr(self, constraint: TempLinearConstr, name=...) -> LinearConstraint: ...
@@ -18,6 +38,18 @@ class Model(Protocol):
         self, constraint: TempQuadraticConstr, name=...
     ) -> QuadraticConstraint: ...
     def addConstr(self, constraint: TempConstr, name: str = "") -> Constraint: ...
+
+    @overload
+    def addConstrs(
+        self, constraints: Iterable[TempLinearConstr], name=...
+    ) -> Iterable[LinearConstraint]: ...
+    @overload
+    def addConstrs(
+        self, constraints: Iterable[TempQuadraticConstr], name=...
+    ) -> Iterable[QuadraticConstraint]: ...
+    def addConstrs(
+        self, constraints: Iterable[TempConstr], name: str = ""
+    ) -> Iterable[Constraint]: ...
 
 
 class Var(Protocol):
@@ -85,22 +117,22 @@ class Var(Protocol):
     # see mypy [issue](https://github.com/python/mypy/issues/2783)
     # for reason over ignore
     @overload  # type: ignore[override]
-    def __eq__(self, x: Union[float, Var, LinearExpresion], /) -> LinearConstraint: ...
+    def __eq__(self, x: Union[float, Var, LinearExpresion], /) -> TempLinearConstr: ...
     @overload  # type: ignore[override]
-    def __eq__(self, x: QuadraticExpresion, /) -> QuadraticExpresion: ...
-    def __eq__(self, x: Expresionable, /) -> Constraint: ...  # type: ignore[override]
+    def __eq__(self, x: QuadraticExpresion, /) -> TempQuadraticConstr: ...
+    def __eq__(self, x: Expresionable, /) -> TempConstr: ...  # type: ignore[override]
 
+    @overload  # type: ignore[override, misc]
+    def __le__(self, x: Union[float, Var, LinearExpresion], /) -> TempLinearConstr: ...
     @overload  # type: ignore[override]
-    def __le__(self, x: Union[float, Var, LinearExpresion], /) -> LinearConstraint: ...
-    @overload  # type: ignore[override]
-    def __le__(self, x: QuadraticExpresion, /) -> QuadraticExpresion: ...  # type: ignore[misc]
-    def __le__(self, x: Expresionable, /) -> Constraint: ...  # type: ignore[override, misc]
+    def __le__(self, x: QuadraticExpresion, /) -> TempQuadraticConstr: ...  # type: ignore[misc]
+    def __le__(self, x: Expresionable, /) -> TempConstr: ...  # type: ignore[override, misc]
 
+    @overload  # type: ignore[override, misc]
+    def __ge__(self, x: Union[float, Var, LinearExpresion], /) -> TempLinearConstr: ...
     @overload  # type: ignore[override]
-    def __ge__(self, x: Union[float, Var, LinearExpresion], /) -> LinearConstraint: ...
-    @overload  # type: ignore[override]
-    def __ge__(self, x: QuadraticExpresion, /) -> QuadraticExpresion: ...  # type: ignore[misc]
-    def __ge__(self, x: Expresionable, /) -> Constraint: ...  # type: ignore[override, misc]
+    def __ge__(self, x: QuadraticExpresion, /) -> TempQuadraticConstr: ...  # type: ignore[misc]
+    def __ge__(self, x: Expresionable, /) -> TempConstr: ...  # type: ignore[override, misc]
 
 
 class LinearExpresion(Protocol):
@@ -245,13 +277,13 @@ class LinearExpresion(Protocol):
     def __eq__(self, x: QuadraticExpresion, /) -> TempQuadraticConstr: ...
     def __eq__(self, x: Expresionable, /) -> TempConstr: ...  # type: ignore[override]
 
-    @overload  # type: ignore[override]
+    @overload  # type: ignore[override, misc]
     def __le__(self, x: Union[float, Var, LinearExpresion], /) -> TempLinearConstr: ...
     @overload  # type: ignore[override]
     def __le__(self, x: QuadraticExpresion, /) -> TempQuadraticConstr: ...  # type: ignore[misc]
     def __le__(self, x: Expresionable, /) -> TempConstr: ...  # type: ignore[override, misc]
 
-    @overload  # type: ignore[override]
+    @overload  # type: ignore[override, misc]
     def __ge__(self, x: Union[float, Var, LinearExpresion], /) -> TempLinearConstr: ...
     @overload  # type: ignore[override]
     def __ge__(self, x: QuadraticExpresion, /) -> TempQuadraticConstr: ...  # type: ignore[misc]
@@ -500,12 +532,12 @@ reveal_type(a + b)
 reveal_type(a * b)
 reveal_type(c)
 d = sum(c)
-reveal_type(d)
+# reveal_type(d)
 
-import gurobipy as gp
-from gurobipy import GRB
+# import gurobipy as gp
+# from gurobipy import GRB
 
-m = gp.Model("mip1")
-x = m.addVar(vtype=GRB.BINARY, name="x")
-y = m.addVar(vtype=GRB.BINARY, name="y")
-z = m.addVar(vtype=GRB.BINARY, name="z")
+# m = gp.Model("mip1")
+# x = m.addVar(vtype=GRB.BINARY, name="x")
+# y = m.addVar(vtype=GRB.BINARY, name="y")
+# z = m.addVar(vtype=GRB.BINARY, name="z")

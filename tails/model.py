@@ -1,8 +1,9 @@
 from typing import Set, Dict, Iterable, Tuple, Mapping
 
-from gurobipy import Model, GRB, quicksum  # type: ignore
+from gurobipy import Model, GRB, quicksum
 
-from .gurobi_typing import IndexedVariable, Var
+from .gurobi_typing import Model as Model_, Scalar
+
 
 class SchedulePlaneMaintenance:
     """
@@ -45,14 +46,17 @@ class SchedulePlaneMaintenance:
     ({'Pat': {'wings'}, 'Mat': set()}, {'F16'})
 
     """
+
     # Fixed number of working hours
     WORKING_HOURS = 8
 
-    def __init__(self,
-                 planes: Mapping[str, Iterable[str]],
-                 workers: Mapping[str, Set[str]],
-                 tasks: Mapping[str, Tuple[Set[str], int]]):
-        self.model: Model = Model('🛦')
+    def __init__(
+        self,
+        planes: Mapping[Scalar, Iterable[str]],
+        workers: Mapping[Scalar, Set[str]],
+        tasks: Mapping[Scalar, Tuple[Set[str], int]],
+    ):
+        self.model: Model_ = Model("🛦")
         self._planes = planes
         self._workers = workers
         self._tasks = tasks
@@ -66,54 +70,66 @@ class SchedulePlaneMaintenance:
             3. Set objective (as many deployable planes as possible)
         """
         # y
-        task_status = \
-            self.model.addVars(self._tasks.keys(),
-                               ub=1, vtype=GRB.BINARY, name='tasks')
+        task_status = self.model.addVars(
+            self._tasks.keys(), ub=1, vtype=GRB.BINARY, name="tasks"
+        )
 
         # x
-        worker_status: IndexedVariable = \
-            self.model.addVars(self._workers.keys(), self._tasks.keys(),
-                               ub=1, vtype=GRB.BINARY, name='workers')
-        
-        reveal_type(worker_status)
-        a = sum(ws for ws in worker_status.values())
-        print(a)
-        reveal_type(a)
+        worker_status = self.model.addVars(
+            self._workers.keys(),
+            self._tasks.keys(),
+            ub=1,
+            vtype=GRB.BINARY,
+            name="workers",
+        )
 
         # z
-        plane_status = \
-            self.model.addVars(self._planes.keys(),
-                               ub=1, vtype=GRB.BINARY, name='planes')
+        plane_status = self.model.addVars(
+            self._planes.keys(), ub=1, vtype=GRB.BINARY, name="planes"
+        )
 
         # First constraint
         self.model.addConstrs(
-            (plane_status[plane] <= task_status[task]
-             for plane in plane_status
-             for task in self._planes[plane]),
-            name='plane_tasks_completed')
+            (
+                plane_status[plane] <= task_status[task]
+                for plane in plane_status
+                for task in self._planes[plane]
+            ),
+            name="plane_tasks_completed",
+        )
 
         # Second constraint
         self.model.addConstrs(
-            (task_status[task] <= worker_status.sum("*", task)
-             for task in task_status),
-            name='task_picked_up')
-        
+            (task_status[task] <= worker_status.sum("*", task) for task in task_status),
+            name="task_picked_up",
+        )
+
         # Third constraint
         self.model.addConstrs(
-            (quicksum(worker_status[(worker, task)]
-                      * self._tasks[task][1]  # retrieve time of task
-                      for task in task_status) <= self.WORKING_HOURS
-             for worker, _ in worker_status),
-            name='max_working_hours')
+            (
+                quicksum(
+                    worker_status[(worker, task)]
+                    * self._tasks[task][1]  # retrieve time of task
+                    for task in task_status
+                )
+                <= self.WORKING_HOURS
+                for worker, _ in worker_status
+            ),
+            name="max_working_hours",
+        )
 
         # Fourth constraint
         self.model.addConstrs(
-            (worker_status[(worker, task)] <= 1
-             if self._tasks[task][0].issubset(  # retrieve task qualifications
-                self._workers[worker])  # compare with worker qualifications
-             else worker_status[(worker, task)] <= 0
-             for worker, task in worker_status),
-            name='qualified_work_only')
+            (
+                worker_status[(worker, task)] <= 1
+                if self._tasks[task][0].issubset(  # retrieve task qualifications
+                    self._workers[worker]
+                )  # compare with worker qualifications
+                else worker_status[(worker, task)] <= 0
+                for worker, task in worker_status
+            ),
+            name="qualified_work_only",
+        )
 
         # Set objective to maximize number of planes with all tasks completed
         self.model.setObjective(plane_status.sum(), GRB.MAXIMIZE)
@@ -128,15 +144,20 @@ class SchedulePlaneMaintenance:
         """
         self.model.optimize()
 
-        worker_schedule = \
-            {worker:
-                {task for task in self._tasks.keys()
-                 # check if tasks is assigned to this worker ( == 1)
-                 if self.model.getVarByName(f'workers[{worker},{task}]').X}
-             for worker in self._workers.keys()}
+        worker_schedule = {
+            worker: {
+                task
+                for task in self._tasks.keys()
+                # check if tasks is assigned to this worker ( == 1)
+                if self.model.getVarByName(f"workers[{worker},{task}]").X
+            }
+            for worker in self._workers.keys()
+        }
 
-        deployable_planes = \
-            {plane for plane in self._planes.keys()
-             if self.model.getVarByName(f'planes[{plane}]').X}
+        deployable_planes = {
+            plane
+            for plane in self._planes.keys()
+            if self.model.getVarByName(f"planes[{plane}]").X
+        }
 
         return worker_schedule, deployable_planes
