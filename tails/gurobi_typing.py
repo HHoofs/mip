@@ -1,16 +1,22 @@
 from __future__ import annotations
 
+from gurobipy import quicksum as qs
 from datetime import datetime, timedelta
 from typing import (
     Any,
     Dict,
+    Generic,
     Iterable,
     Iterator,
     Literal,
     Mapping,
     Protocol,
+    Tuple,
+    TypeVar,
     Union,
+    cast,
     overload,
+    runtime_checkable,
 )
 
 
@@ -18,12 +24,14 @@ Expresionable = Union[float, "Var", "LinearExpresion", "QuadraticExpresion"]
 Expresion = Union["LinearExpresion", "QuadraticExpresion"]
 Env = Any
 Scalar = Union[float, str, bool, bytes, complex, datetime, timedelta]
+X = TypeVar("X")
+X_co = TypeVar("X_co", covariant=True)
 
 
-class TupleDict(Protocol):
-    def __getitem__(self, idx: Scalar | slice) -> Var: ...
+class TupleDict(Protocol[X_co]):
+    def __getitem__(self, idx) -> Var: ...
 
-    def __iter__(self) -> Iterator[Scalar]: ...
+    def __iter__(self) -> Iterator[X_co]: ...
 
 
 class Model(Protocol):
@@ -50,6 +58,22 @@ class Model(Protocol):
     def addConstrs(
         self, constraints: Iterable[TempConstr], name: str = ""
     ) -> Iterable[Constraint]: ...
+
+
+@overload
+def quicksum(data: list[LinearExpresion]) -> LinearExpresion: ...
+@overload
+def quicksum(
+    data: list[QuadraticExpresion],
+) -> QuadraticExpresion: ...
+def quicksum(
+    data: list[Expresion] | list[LinearExpresion] | list[QuadraticExpresion],
+) -> Expresion:
+    _expression = qs(data)
+    if any(isinstance(d, QuadraticExpresion) for d in data):
+        return cast(QuadraticExpresion, _expression)
+    else:
+        return cast(LinearExpresion, _expression)
 
 
 class Var(Protocol):
@@ -290,6 +314,7 @@ class LinearExpresion(Protocol):
     def __ge__(self, x: Expresionable, /) -> TempConstr: ...  # type: ignore[override, misc]
 
 
+@runtime_checkable
 class QuadraticExpresion(Protocol):
     def clear(self) -> None:
         """
@@ -519,20 +544,20 @@ def sum(iterable: Iterable[Union[LinearExpresion, Var, float]]) -> LinearExpresi
 def sum(iterable: Iterable[Expresionable]) -> Expresion: ...
 
 
-print(sum([1, 2, 3]))
+# print(sum([1, 2, 3]))
 
 
-a: Var  # = cast(Literal[3], Var)
-b: Var  # = cast(Literal[3], Var)
-c = (a, b, a * b)
-exp = a + 2
+# a: Var  # = cast(Literal[3], Var)
+# b: Var  # = cast(Literal[3], Var)
+# c = (a, b, a * b)
+# exp = a + 2
 
-reveal_type(b + exp)
-reveal_type(a + b)
-reveal_type(a * b)
-reveal_type(c)
-d = sum(c)
-# reveal_type(d)
+# reveal_type(b + exp)
+# reveal_type(a + b)
+# reveal_type(a * b)
+# reveal_type(c)
+# d = sum(c)
+# # reveal_type(d)
 
 # import gurobipy as gp
 # from gurobipy import GRB

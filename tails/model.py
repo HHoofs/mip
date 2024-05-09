@@ -1,8 +1,8 @@
 from typing import Set, Dict, Iterable, Tuple, Mapping
 
-from gurobipy import Model, GRB, quicksum
+from gurobipy import Model, GRB
 
-from .gurobi_typing import Model as Model_, Scalar
+from .gurobi_typing import Model as Model_, quicksum
 
 
 class SchedulePlaneMaintenance:
@@ -52,9 +52,9 @@ class SchedulePlaneMaintenance:
 
     def __init__(
         self,
-        planes: Mapping[Scalar, Iterable[str]],
-        workers: Mapping[Scalar, Set[str]],
-        tasks: Mapping[Scalar, Tuple[Set[str], int]],
+        planes: Mapping[str, Iterable[str]],
+        workers: Mapping[str, Set[str]],
+        tasks: Mapping[str, Tuple[Set[str], int]],
     ):
         self.model: Model_ = Model("🛦")
         self._planes = planes
