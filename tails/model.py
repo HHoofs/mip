@@ -2,7 +2,7 @@ from typing import Set, Dict, Iterable, Tuple, Mapping
 
 from gurobipy import Model, GRB
 
-from .gurobi_typing import Model as Model_, quicksum
+from .gurobi_typing import Model as Model_, TupleDict, quicksum
 
 
 class SchedulePlaneMaintenance:

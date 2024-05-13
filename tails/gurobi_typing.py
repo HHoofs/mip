@@ -33,11 +33,21 @@ class TupleDict(Protocol[X_co]):
 
     def __iter__(self) -> Iterator[X_co]: ...
 
+    def sum(self, *args, **kwargs) -> float: ...
+
 
 class Model(Protocol):
     def __init__(self, name: str = "", env=Env) -> None: ...
 
-    def addVars(self, *args, **kwargs) -> TupleDict: ...
+    def addVars(
+        self,
+        *indexes: X,
+        lb: float = 0.0,
+        ub=Any,
+        obj: float = 0.0,
+        vtype=Any,
+        name: str = "",
+    ) -> TupleDict[X]: ...
 
     @overload
     def addConstr(self, constraint: TempLinearConstr, name=...) -> LinearConstraint: ...
@@ -59,15 +69,23 @@ class Model(Protocol):
         self, constraints: Iterable[TempConstr], name: str = ""
     ) -> Iterable[Constraint]: ...
 
+    def setObjective(self, *args, **kwargs): ...
+
+    def optimize(self, *args, **kwargs): ...
+
+    def getVarByName(self, *args, **kwargs): ...
+
 
 @overload
-def quicksum(data: list[LinearExpresion]) -> LinearExpresion: ...
+def quicksum(data: Iterator[LinearExpresion]) -> LinearExpresion: ...
 @overload
 def quicksum(
-    data: list[QuadraticExpresion],
+    data: Iterator[QuadraticExpresion],
 ) -> QuadraticExpresion: ...
 def quicksum(
-    data: list[Expresion] | list[LinearExpresion] | list[QuadraticExpresion],
+    data: Iterator[Expresion]
+    | Iterator[LinearExpresion]
+    | Iterator[QuadraticExpresion],
 ) -> Expresion:
     _expression = qs(data)
     if any(isinstance(d, QuadraticExpresion) for d in data):
@@ -559,10 +577,10 @@ def sum(iterable: Iterable[Expresionable]) -> Expresion: ...
 # d = sum(c)
 # # reveal_type(d)
 
-# import gurobipy as gp
-# from gurobipy import GRB
+import gurobipy as gp
+from gurobipy import GRB
 
-# m = gp.Model("mip1")
-# x = m.addVar(vtype=GRB.BINARY, name="x")
-# y = m.addVar(vtype=GRB.BINARY, name="y")
-# z = m.addVar(vtype=GRB.BINARY, name="z")
+m = gp.Model("mip1")
+x = m.addVar(vtype=GRB.BINARY, name="x")
+y = m.addVar(vtype=GRB.BINARY, name="y")
+z = m.addVar(vtype=GRB.BINARY, name="z")
