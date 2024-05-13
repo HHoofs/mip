@@ -70,22 +70,22 @@ class SchedulePlaneMaintenance:
             3. Set objective (as many deployable planes as possible)
         """
         # y
-        task_status = self.model.addVars(
+        task_status: TupleDict[str] = self.model.addVars(
             self._tasks.keys(), ub=1, vtype=GRB.BINARY, name="tasks"
         )
 
         # x
-        worker_status = self.model.addVars(
-            self._workers.keys(),
-            self._tasks.keys(),
+        worker_status: TupleDict[tuple[str, str]] = self.model.addVars(
+            list(self._workers.keys()),
+            list(self._tasks.keys()),
             ub=1,
             vtype=GRB.BINARY,
             name="workers",
         )
 
         # z
-        plane_status = self.model.addVars(
-            self._planes.keys(), ub=1, vtype=GRB.BINARY, name="planes"
+        plane_status: TupleDict[str] = self.model.addVars(
+            list(self._planes.keys()), ub=1, vtype=GRB.BINARY, name="planes"
         )
 
         # First constraint

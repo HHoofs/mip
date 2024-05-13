@@ -1,4 +1,5 @@
 from __future__ import annotations
+import abc
 
 from gurobipy import quicksum as qs
 from datetime import datetime, timedelta
@@ -24,74 +25,6 @@ Expresionable = Union[float, "Var", "LinearExpresion", "QuadraticExpresion"]
 Expresion = Union["LinearExpresion", "QuadraticExpresion"]
 Env = Any
 Scalar = Union[float, str, bool, bytes, complex, datetime, timedelta]
-X = TypeVar("X")
-X_co = TypeVar("X_co", covariant=True)
-
-
-class TupleDict(Protocol[X_co]):
-    def __getitem__(self, idx) -> Var: ...
-
-    def __iter__(self) -> Iterator[X_co]: ...
-
-    def sum(self, *args, **kwargs) -> float: ...
-
-
-class Model(Protocol):
-    def __init__(self, name: str = "", env=Env) -> None: ...
-
-    def addVars(
-        self,
-        *indexes: X,
-        lb: float = 0.0,
-        ub=Any,
-        obj: float = 0.0,
-        vtype=Any,
-        name: str = "",
-    ) -> TupleDict[X]: ...
-
-    @overload
-    def addConstr(self, constraint: TempLinearConstr, name=...) -> LinearConstraint: ...
-    @overload
-    def addConstr(
-        self, constraint: TempQuadraticConstr, name=...
-    ) -> QuadraticConstraint: ...
-    def addConstr(self, constraint: TempConstr, name: str = "") -> Constraint: ...
-
-    @overload
-    def addConstrs(
-        self, constraints: Iterable[TempLinearConstr], name=...
-    ) -> Iterable[LinearConstraint]: ...
-    @overload
-    def addConstrs(
-        self, constraints: Iterable[TempQuadraticConstr], name=...
-    ) -> Iterable[QuadraticConstraint]: ...
-    def addConstrs(
-        self, constraints: Iterable[TempConstr], name: str = ""
-    ) -> Iterable[Constraint]: ...
-
-    def setObjective(self, *args, **kwargs): ...
-
-    def optimize(self, *args, **kwargs): ...
-
-    def getVarByName(self, *args, **kwargs): ...
-
-
-@overload
-def quicksum(data: Iterator[LinearExpresion]) -> LinearExpresion: ...
-@overload
-def quicksum(
-    data: Iterator[QuadraticExpresion],
-) -> QuadraticExpresion: ...
-def quicksum(
-    data: Iterator[Expresion]
-    | Iterator[LinearExpresion]
-    | Iterator[QuadraticExpresion],
-) -> Expresion:
-    _expression = qs(data)
-    if any(isinstance(d, QuadraticExpresion) for d in data):
-        return cast(QuadraticExpresion, _expression)
-    else:
-        return cast(LinearExpresion, _expression)
 
 
 class Var(Protocol):
@@ -175,6 +108,83 @@ class Var(Protocol):
     @overload  # type: ignore[override]
     def __ge__(self, x: QuadraticExpresion, /) -> TempQuadraticConstr: ...  # type: ignore[misc]
     def __ge__(self, x: Expresionable, /) -> TempConstr: ...  # type: ignore[override, misc]
+
+
+X = TypeVar("X")
+X_co = TypeVar("X_co", covariant=True)
+
+KT = TypeVar("KT", bound=Scalar | tuple[Scalar, ...])
+KT_cov = TypeVar("KT_cov", covariant=True)
+VT = TypeVar("VT", bound=Var)
+
+
+class TupleDict(Mapping[KT, Var]):
+    @abc.abstractmethod
+    def __getitem__(self, k: KT) -> Var: ...
+    @abc.abstractmethod
+    def __iter__(self) -> Iterator[KT]: ...
+    @abc.abstractmethod
+    def __len__(self) -> int: ...
+    @abc.abstractmethod
+    def sum(self, *k: KT_cov | Literal["*"]): ...
+
+
+class Model(Protocol):
+    def __init__(self, name: str = "", env=Env) -> None: ...
+
+    def addVars(
+        self,
+        *indexes,
+        lb: float = 0.0,
+        ub=Any,
+        obj: float = 0.0,
+        vtype=Any,
+        name: str = "",
+    ) -> TupleDict[KT]: ...
+
+    @overload
+    def addConstr(self, constraint: TempLinearConstr, name=...) -> LinearConstraint: ...
+    @overload
+    def addConstr(
+        self, constraint: TempQuadraticConstr, name=...
+    ) -> QuadraticConstraint: ...
+    def addConstr(self, constraint: TempConstr, name: str = "") -> Constraint: ...
+
+    @overload
+    def addConstrs(
+        self, constraints: Iterable[TempLinearConstr], name=...
+    ) -> Iterable[LinearConstraint]: ...
+    @overload
+    def addConstrs(
+        self, constraints: Iterable[TempQuadraticConstr], name=...
+    ) -> Iterable[QuadraticConstraint]: ...
+    def addConstrs(
+        self, constraints: Iterable[TempConstr], name: str = ""
+    ) -> Iterable[Constraint]: ...
+
+    def setObjective(self, *args, **kwargs): ...
+
+    def optimize(self, *args, **kwargs): ...
+
+    def getVarByName(self, *args, **kwargs): ...
+
+
+@overload
+def quicksum(data: Iterator[LinearExpresion]) -> LinearExpresion: ...
+@overload
+def quicksum(
+    data: Iterator[QuadraticExpresion],
+) -> QuadraticExpresion: ...
+def quicksum(
+    data: Iterator[Expresion]
+    | Iterator[LinearExpresion]
+    | Iterator[QuadraticExpresion],
+) -> Expresion:
+    _expression = qs(data)
+    if any(isinstance(d, QuadraticExpresion) for d in data):
+        return cast(QuadraticExpresion, _expression)
+    else:
+        return cast(LinearExpresion, _expression)
 
 
 class LinearExpresion(Protocol):
