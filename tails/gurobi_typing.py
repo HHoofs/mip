@@ -24,6 +24,7 @@ from typing import (
 Expresionable = Union[float, "Var", "LinearExpresion", "QuadraticExpresion"]
 Expresion = Union["LinearExpresion", "QuadraticExpresion"]
 Env = Any
+Column = Any
 Scalar = Union[float, str, bool, bytes, complex, datetime, timedelta]
 
 
@@ -117,6 +118,9 @@ KT = TypeVar("KT", bound=Scalar | tuple[Scalar, ...])
 KT_cov = TypeVar("KT_cov", covariant=True)
 VT = TypeVar("VT", bound=Var)
 
+_T1 = TypeVar("_T1", bound=Scalar)
+_T2 = TypeVar("_T2", bound=Scalar)
+
 
 class TupleDict(Mapping[KT, Var]):
     @abc.abstractmethod
@@ -132,14 +136,49 @@ class TupleDict(Mapping[KT, Var]):
 class Model(Protocol):
     def __init__(self, name: str = "", env=Env) -> None: ...
 
+    def addVar(
+        self,
+        lb: float = 0.0,
+        ub: float = 1e100,
+        obj: float = 0.0,
+        vtype: str = "C",
+        name: str = "",
+        column=None,
+    ) -> Var: ...
+
+    @overload
     def addVars(
         self,
-        *indexes,
+        index1: Iterable[_T1],
+        /,
+        *,
+        lb=...,
+        ub=...,
+        obj=...,
+        vtype=...,
+        name=...,
+    ) -> TupleDict[_T1]: ...
+    @overload
+    def addVars(
+        self,
+        index1: Iterable[_T1],
+        index2: Iterable[_T2],
+        /,
+        *,
+        lb=...,
+        ub=...,
+        obj=...,
+        vtype=...,
+        name=...,
+    ) -> TupleDict[Tuple[_T1, _T2]]: ...
+    def addVars(
+        self,
+        *indexes: Iterable[KT],
         lb: float = 0.0,
-        ub=Any,
+        ub: float = 1e100,
         obj: float = 0.0,
-        vtype=Any,
-        name: str = "",
+        vtype: str = "C",
+        name: Column = None,
     ) -> TupleDict[KT]: ...
 
     @overload
@@ -590,7 +629,15 @@ def sum(iterable: Iterable[Expresionable]) -> Expresion: ...
 import gurobipy as gp
 from gurobipy import GRB
 
-m = gp.Model("mip1")
+m: Model = gp.Model("mip1")
 x = m.addVar(vtype=GRB.BINARY, name="x")
 y = m.addVar(vtype=GRB.BINARY, name="y")
 z = m.addVar(vtype=GRB.BINARY, name="z")
+
+v = m.addVars([1, 2, 3], ["a", "b", "c"], lb=0)
+reveal_type(v)
+# v = m.addVars([1, 2, 3], lb=0)
+
+for _v in v:
+    reveal_type(_v)
+    print(_v)
