@@ -1,8 +1,11 @@
+"""
+Implementation of core functionality to schedule to the maintenance
+of various planes
+"""
+
 from typing import Set, Dict, Iterable, Tuple, Mapping
 
-from gurobipy import Model, GRB
-
-from .gurobi_typing import Model as Model_, TupleDict, quicksum
+from gurobipy import Model, GRB, quicksum
 
 
 class SchedulePlaneMaintenance:
@@ -47,8 +50,8 @@ class SchedulePlaneMaintenance:
 
     """
 
-    # Fixed number of working hours
-    WORKING_HOURS = 8
+    #: Fixed number of working hours
+    WORKING_HOURS: int = 8
 
     def __init__(
         self,
@@ -56,7 +59,7 @@ class SchedulePlaneMaintenance:
         workers: Mapping[str, Set[str]],
         tasks: Mapping[str, Tuple[Set[str], int]],
     ):
-        self.model: Model_ = Model("🛦")
+        self.model: Model = Model("🛦")
         self._planes = planes
         self._workers = workers
         self._tasks = tasks
