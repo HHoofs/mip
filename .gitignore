@@ -1,5 +1,6 @@
 .idea
 venv
+.vscode/settings.json
 
 *.lock
 
@@ -8,3 +9,8 @@ scheduler/__pycache__/
 tests/__pycache__/
 
 __pycache__/
+
+docs/build
+docs/source/*.rst
+!docs/source/index.rst
+.DS_Store
